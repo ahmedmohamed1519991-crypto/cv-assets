@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <script>
+      // Gracefully silence Vite HMR WebSocket connection in Cloud Run iframe
+      (function() {
+        var OriginalWebSocket = window.WebSocket;
+        if (OriginalWebSocket) {
+          window.WebSocket = function(url, protocols) {
+            var isHmr = false;
+            if (typeof protocols === 'string' && protocols === 'vite-hmr') isHmr = true;
+            if (Array.isArray(protocols) && protocols.indexOf('vite-hmr') !== -1) isHmr = true;
+            if (typeof url === 'string' && (url.indexOf('token=') !== -1 || url.indexOf('vite-hmr') !== -1)) isHmr = true;
+
+            if (isHmr) {
+              var listeners = {};
+              var mock = {
+                binaryType: 'blob',
+                bufferedAmount: 0,
+                extensions: '',
+                protocol: 'vite-hmr',
+                readyState: 1, // WebSocket.OPEN so Vite skips await Promise rejection
+                url: url,
+                CONNECTING: 0,
+                OPEN: 1,
+                CLOSING: 2,
+                CLOSED: 3,
+                addEventListener: function(event, handler) {
+                  if (!listeners[event]) listeners[event] = [];
+                  listeners[event].push(handler);
+                  if (event === 'open') {
+                    setTimeout(function() {
+                      try { handler({ type: 'open', target: mock }); } catch (e) {}
+                    }, 0);
+                  }
+                },
+                removeEventListener: function(event, handler) {
+                  if (!listeners[event]) return;
+                  listeners[event] = listeners[event].filter(function(h) { return h !== handler; });
+                },
+                send: function() {},
+                close: function() {
+                  mock.readyState = 3;
+                },
+                dispatchEvent: function() { return true; }
+              };
+              return mock;
+            }
+
+            try {
+              return new OriginalWebSocket(url, protocols);
+            } catch (e) {
+              return new OriginalWebSocket(url);
+            }
+          };
+
+          window.WebSocket.prototype = OriginalWebSocket.prototype;
+          window.WebSocket.CONNECTING = 0;
+          window.WebSocket.OPEN = 1;
+          window.WebSocket.CLOSING = 2;
+          window.WebSocket.CLOSED = 3;
+        }
+
+        var isWsError = function(err) {
+          if (!err) return false;
+          var msg = String(err.message || err.reason || err || '');
+          return msg.indexOf('WebSocket') !== -1 || msg.indexOf('vite:ws') !== -1 || msg.indexOf('closed without opened') !== -1;
+        };
+
+        window.addEventListener('error', function(e) {
+          if (isWsError(e.error) || isWsError(e.message)) {
+            e.stopImmediatePropagation();
+            e.preventDefault();
+            return true;
+          }
+        }, true);
+
+        window.addEventListener('unhandledrejection', function(e) {
+          if (isWsError(e.reason)) {
+            e.stopImmediatePropagation();
+            e.preventDefault();
+            return true;
+          }
+        }, true);
+
+        var origConsoleError = console.error;
+        console.error = function() {
+          var args = Array.prototype.slice.call(arguments);
+          if (args.some(function(arg) { return isWsError(arg); })) {
+            return;
+          }
+          origConsoleError.apply(console, arguments);
+        };
+      })();
+    </script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CV Maker AI - Bilingual Resume Builder & ATS Analyzer</title>
+    <meta name="description" content="AI-powered bilingual resume builder supporting Arabic & English with professional ATS templates, cover letters, and live PDF export." />
+    <meta property="og:title" content="CV Maker AI - Bilingual Resume Builder & ATS Analyzer" />
+    <meta property="og:description" content="AI-powered bilingual resume builder supporting Arabic & English with professional ATS templates, cover letters, and live PDF export." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="theme-color" content="#0f172a" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="CVMakerAI" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <!-- Preconnect & Google Fonts for English and Arabic -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  </head>
+  <body class="bg-slate-50 text-slate-900 antialiased selection:bg-blue-600 selection:text-white">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

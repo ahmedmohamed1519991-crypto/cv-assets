@@ -1,0 +1,6 @@
+{
+  "name": "CV Maker AI",
+  "description": "AI-powered bilingual resume builder supporting Arabic & English with professional ATS templates, cover letters, and live PDF export.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
